@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is Ani's birthday surprise built with Next.js.
 
 ## Getting Started
 
@@ -20,7 +20,24 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Learn More
+## Adding narration audio
+
+Place compressed mono MP3 files (64–96 kbps) in `public/voice/`:
+
+- `urdu-wish.mp3` — male Urdu birthday wish
+- `letter-en.mp3` — male reading of the letter
+- `dont-forget-me.mp3` — short English reading of the One Little Request
+- Optional later: `letter-ur.mp3` for an Urdu letter reading
+
+Record your own voice on a phone and export MP3, or create the files with a voice service such as Azure Speech (`ur-PK-AsadNeural` and `en-US-GuyNeural`) or ElevenLabs. Full scripts and export steps are in [`scripts/voice-notes.md`](scripts/voice-notes.md). Voice file paths and language are configured in `src/data/voice.ts`; the editable Urdu text and English translation are in `src/data/content.ts`, and the letter text is the `letter` constant in that same file. Set `LETTER_VOICE_LANG` to `"ur"` in `src/data/voice.ts` to select the optional Urdu letter file.
+
+## Pre-send checklist
+
+- Check Urdu right-to-left rendering on Android and iPhone.
+- Check that the wish voice starts after the reveal and the music ducks and recovers.
+- Check that letter narration starts when the envelope opens.
+- Tap Next quickly and confirm narration never overlaps.
+- Check playback with the phone ringer on and media volume up.
 
 To learn more about Next.js, take a look at the following resources:
 

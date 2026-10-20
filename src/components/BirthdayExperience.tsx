@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AniPhoto } from "@/components/AniPhoto";
 import { galleryImages } from "@/assets/gallery";
 import {
   chapters,
@@ -17,14 +18,56 @@ import {
   photos,
   prayers,
   presentWishes,
+  photoMap,
   qualities,
   recipient,
   randomWishes,
   scratchCards,
   secretMessages,
+  urduBirthdayWish,
+  urduBirthdayTranslation,
 } from "@/data/content";
+import { useAudio, useVoice } from "@/lib/audio-context";
+import { LETTER_VOICE_LANG, voiceTracks } from "@/data/voice";
+import { useSfx } from "@/lib/sfx";
 
 const sparklePieces = Array.from({ length: 34 }, (_, i) => i);
+
+function KaraokeWish() {
+  const words = urduBirthdayWish.split(" ");
+  const [activeWord, setActiveWord] = useState(-1);
+  const timerRef = useRef<number | null>(null);
+  useEffect(() => {
+    const start = window.setTimeout(() => {
+      let index = 0;
+      setActiveWord(0);
+      timerRef.current = window.setInterval(() => {
+        index += 1;
+        setActiveWord(index);
+        if (index >= words.length && timerRef.current) window.clearInterval(timerRef.current);
+      }, 620);
+    }, 1200);
+    return () => { window.clearTimeout(start); if (timerRef.current) window.clearInterval(timerRef.current); };
+  }, [words.length]);
+  return <p className="urdu-wish-text">{words.map((word, index) => <span key={`${word}-${index}`} className={index === activeWord ? "karaoke-active" : ""}>{word} </span>)}</p>;
+}
+
+function NarrationControls({ id, autoStart = false, replayLabel = "🔁 Replay voice", onSkip, onPauseState }: { id: string; autoStart?: boolean; replayLabel?: string; onSkip?: () => void; onPauseState?: (paused: boolean) => void }) {
+  const voice = useVoice();
+  const playVoice = voice.play;
+  const [playing, setPlaying] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const voiceFile = voiceTracks[id as keyof typeof voiceTracks]?.file;
+  const play = useCallback(async () => {
+    setUnavailable(false);
+    const ok = await playVoice(id);
+    setPlaying(ok);
+    setUnavailable(!ok);
+    if (ok) onPauseState?.(false);
+  }, [id, onPauseState, playVoice]);
+  useEffect(() => { if (autoStart) { const timer = window.setTimeout(() => void play(), 1200); return () => window.clearTimeout(timer); } }, [autoStart, play]);
+  return <div className="voice-controls"><button type="button" onClick={() => void play()}>{unavailable ? "🔊 Tap to hear this" : replayLabel}</button><button type="button" onClick={() => { if (playing) { voice.pause(); setPlaying(false); onPauseState?.(true); } else { void voice.resume().then(() => { setPlaying(true); onPauseState?.(false); }); } }}>{playing ? "⏸ Pause" : "▶ Resume"}</button>{onSkip && <button type="button" onClick={() => { voice.stop(); setPlaying(false); onSkip(); }}>Skip voice</button>}{unavailable && <small>Couldn’t load {voiceFile ?? "the voice file"}. Add it under public{voiceFile ?? "/voice/"} and reload. The text is still here.</small>}</div>;
+}
 
 function Confetti({ burst }: { burst: number }) {
   if (!burst) return null;
@@ -57,23 +100,23 @@ function PageHeading({ index }: { index: number }) {
 
 function NextButton({ onClick, children = "Continue" }: { onClick: () => void; children?: string }) {
   return (
-    <button className="next-button" onClick={onClick}>
+    <button className="next-button" onClick={onClick} data-sfx="next" data-sfx-hover>
       <span>{children}</span><b aria-hidden="true">→</b>
     </button>
   );
 }
 
-function TypedText({ text }: { text: string }) {
+function TypedText({ text, speed = 22, step = 4 }: { text: string; speed?: number; step?: number }) {
   const [visibleLength, setVisibleLength] = useState(0);
   useEffect(() => {
     let length = 0;
     const timer = window.setInterval(() => {
-      length = Math.min(text.length, length + 4);
+      length = Math.min(text.length, length + step);
       setVisibleLength(length);
       if (length >= text.length) window.clearInterval(timer);
-    }, 22);
+    }, speed);
     return () => window.clearInterval(timer);
-  }, [text]);
+  }, [speed, step, text]);
   return <span aria-label={text}>{text.slice(0, visibleLength)}{visibleLength < text.length && <i className="typing-cursor">|</i>}</span>;
 }
 
@@ -81,11 +124,11 @@ function GiftScene({ onOpen, onMoon, opened, secret }: { onOpen: () => void; onM
   return (
     <div className="gift-scene">
       <div className="moon-wrap">
-        <button className="moon" aria-label={experienceCopy.opening.moonLabel} onClick={onMoon}>☾</button>
+        <button className="moon" aria-label={experienceCopy.opening.moonLabel} onClick={onMoon} data-sfx="sparkle" data-sfx-hover>☾</button>
         {secret && <span className="moon-secret">{secret}</span>}
       </div>
       <div className="gift-halo" />
-      <button className={`gift-box ${opened ? "is-opening" : ""}`} onClick={onOpen} aria-label={experienceCopy.opening.giftLabel}>
+      <button className={`gift-box ${opened ? "is-opening" : ""}`} onClick={onOpen} aria-label={experienceCopy.opening.giftLabel} data-sfx="gift-open">
         <span className="gift-lid"><i /></span>
         <span className="gift-body"><i className="gift-ribbon" /><i className="gift-bow">♡</i></span>
         <span className="gift-glow" />
@@ -98,9 +141,6 @@ function GiftScene({ onOpen, onMoon, opened, secret }: { onOpen: () => void; onM
 
 export default function BirthdayExperience() {
   const [chapter, setChapter] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [unlocked, setUnlocked] = useState(false);
-  const [untilBirthday, setUntilBirthday] = useState("");
   const [giftOpened, setGiftOpened] = useState(false);
   const [moonTaps, setMoonTaps] = useState(0);
   const [moonSecret, setMoonSecret] = useState("");
@@ -119,44 +159,25 @@ export default function BirthdayExperience() {
   const [envelopeOpen, setEnvelopeOpen] = useState(false);
   const [typedLength, setTypedLength] = useState(0);
   const [showAllLetter, setShowAllLetter] = useState(false);
+  const [letterVoicePaused, setLetterVoicePaused] = useState(false);
   const [cakeTaps, setCakeTaps] = useState(0);
   const [cakeSecret, setCakeSecret] = useState("");
   const [dailyWish, setDailyWish] = useState("");
-  const [musicOn, setMusicOn] = useState(false);
-  const [musicError, setMusicError] = useState("");
-  const [tapSparkles, setTapSparkles] = useState<{ id: number; x: number; y: number }[]>([]);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const tapId = useRef(0);
+  const [promiseHearts, setPromiseHearts] = useState(false);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const scratchMoves = useRef<number[]>([0, 0, 0]);
   const scratchDown = useRef<number | null>(null);
+  const scratchAudioRef = useRef<HTMLAudioElement | null>(null);
   const letterText = letter;
   const reduceMotion = useReducedMotion();
+  const { setChapter: setMusicChapter, voiceDurationMs, stopVoice, playBirthdaySong } = useAudio();
+  const { play, startScratch, stopScratch } = useSfx();
+  const triggerConfetti = useCallback(() => {
+    setBurst((value) => value + 1);
+    play("confetti");
+  }, [play]);
 
-  useEffect(() => {
-    const preview = new URLSearchParams(window.location.search).get("preview") === "true";
-    const checkDate = () => {
-      const now = new Date();
-      const unlockAt = new Date(2026, 9, 21, 0, 0, 0);
-      const hasArrived = now >= unlockAt;
-      setUnlocked(preview || hasArrived);
-      if (!hasArrived && !preview) {
-        const difference = unlockAt.getTime() - now.getTime();
-        const days = Math.floor(difference / 86_400_000);
-        const hours = Math.floor((difference % 86_400_000) / 3_600_000);
-        const minutes = Math.floor((difference % 3_600_000) / 60_000);
-        const seconds = Math.floor((difference % 60_000) / 1_000);
-        setUntilBirthday(`${days ? `${days}d ` : ""}${String(hours).padStart(2, "0")} : ${String(minutes).padStart(2, "0")} : ${String(seconds).padStart(2, "0")}`);
-      }
-    };
-    checkDate();
-    const dateTimer = window.setInterval(checkDate, 1000);
-    const loadTimer = window.setTimeout(() => setLoading(false), 900);
-    return () => {
-      window.clearInterval(dateTimer);
-      window.clearTimeout(loadTimer);
-    };
-  }, []);
+  useEffect(() => setMusicChapter(chapter), [chapter, setMusicChapter]);
 
   useEffect(() => {
     const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
@@ -174,29 +195,35 @@ export default function BirthdayExperience() {
     let currentCount = 3;
     const tick = window.setInterval(() => {
       currentCount -= 1;
+      play("counter-tick");
       if (currentCount <= 0) {
         window.clearInterval(tick);
         setCountdown(1);
         setCountdownDone(true);
-        setBurst((value) => value + 1);
+        triggerConfetti();
+        play("balloon-pop");
       } else setCountdown(currentCount);
-    }, 850);
+    }, 1000);
     return () => window.clearInterval(tick);
-  }, [chapter, countdownDone]);
+  }, [chapter, countdownDone, play, triggerConfetti]);
 
   useEffect(() => {
-    if (chapter !== 6) return;
+    if (chapter !== 7) return;
     let currentScore = 0;
     const timer = window.setInterval(() => {
       currentScore = Math.min(500, currentScore + 17);
       setScore(currentScore);
+      if (currentScore % 68 === 0) play("counter-tick");
       if (currentScore >= 500) {
         window.clearInterval(timer);
-        setBurst((burstValue) => burstValue + 1);
+        setScore(500);
+        triggerConfetti();
+        play("success");
+        play("firework");
       }
     }, 45);
     return () => window.clearInterval(timer);
-  }, [chapter]);
+  }, [chapter, play, triggerConfetti]);
 
   useEffect(() => {
     if (chapter !== 10) return;
@@ -224,19 +251,22 @@ export default function BirthdayExperience() {
   }, [chapter, scratched]);
 
   useEffect(() => {
-    if (!envelopeOpen || showAllLetter || typedLength >= letterText.length) return;
+    if (!envelopeOpen || showAllLetter || letterVoicePaused || typedLength >= letterText.length) return;
+    const intervalMs = voiceDurationMs > 0 ? Math.max(22, voiceDurationMs / letterText.length) : 28;
     const timer = window.setInterval(() => {
-      setTypedLength((value) => Math.min(letterText.length, value + 7));
-    }, 18);
+      setTypedLength((value) => Math.min(letterText.length, value + 1));
+    }, intervalMs);
     return () => window.clearInterval(timer);
-  }, [envelopeOpen, showAllLetter, typedLength, letterText.length]);
+  }, [envelopeOpen, showAllLetter, letterVoicePaused, typedLength, letterText.length, voiceDurationMs]);
 
   const goNext = useCallback(() => {
-    if (chapter + 1 === 6) setScore(0);
+    stopVoice();
+    if (chapter + 1 === 7) setScore(0);
     setChapter((current) => Math.min(chapters.length - 1, current + 1));
-  }, [chapter]);
+  }, [chapter, stopVoice]);
 
   const replay = () => {
+    stopVoice();
     setChapter(0);
     setScore(0);
     setGiftOpened(false);
@@ -251,39 +281,17 @@ export default function BirthdayExperience() {
     setEnvelopeOpen(false);
     setTypedLength(0);
     setShowAllLetter(false);
+    setLetterVoicePaused(false);
     setChatIndex(0);
     setChatReply("");
     setChatAnswers([]);
-  };
-
-  const toggleMusic = async () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (musicOn) {
-      audio.pause();
-      setMusicOn(false);
-      return;
-    }
-    try {
-      await audio.play();
-      setMusicOn(true);
-      setMusicError("");
-    } catch {
-      setMusicOn(false);
-      setMusicError("Add your MP3 at public/music/birthday.mp3");
-    }
-  };
-
-  const addTapSparkle = (event: ReactPointerEvent<HTMLElement>) => {
-    if (event.pointerType === "mouse") return;
-    const id = ++tapId.current;
-    setTapSparkles((current) => [...current, { id, x: event.clientX, y: event.clientY }]);
-    window.setTimeout(() => setTapSparkles((current) => current.filter((sparkle) => sparkle.id !== id)), 800);
+    setPromiseHearts(false);
   };
 
   const openGift = () => {
     if (giftOpened) return;
     setGiftOpened(true);
+    playBirthdaySong();
     window.setTimeout(() => setChapter(1), 950);
   };
 
@@ -341,50 +349,28 @@ export default function BirthdayExperience() {
     scratchMoves.current = nextMoves;
     if (nextMoves[index] >= 5) {
       setScratched((current) => [...current, index]);
-      setBurst((value) => value + 1);
+      triggerConfetti();
+      play("reveal");
     }
   };
 
-  if (loading) {
-    return <main className="loading-screen"><span className="loader-star">✦</span><p>{experienceCopy.loading}</p><div className="loading-line"><i /></div></main>;
-  }
-
-  if (!unlocked) {
-    return (
-      <main className="lock-screen">
-        <div className="ambient-orb orb-one" /><div className="ambient-orb orb-two" />
-        <div className="lock-card glass-card">
-          <p className="eyebrow"><span>✦</span> {experienceCopy.lock.eyebrow}</p>
-          <div className="lock-icon">♡</div>
-          <h1>For {recipient.firstName},<br /><em>on the right day.</em></h1>
-          <p className="lock-copy">{experienceCopy.lock.opening} <strong>{experienceCopy.lock.date}</strong>.</p>
-          <div className="lock-countdown"><span>{untilBirthday || "00 : 00 : 00"}</span><small>{experienceCopy.lock.countdownLabel}</small></div>
-          <p className="lock-note">{experienceCopy.lock.note}</p>
-        </div>
-        <p className="lock-signature">{experienceCopy.lock.signature}</p>
-      </main>
-    );
-  }
-
   return (
-    <main className={`experience ${chapter === 5 ? "du-theme" : ""}`} onPointerDown={addTapSparkle}>
+    <main className={`experience ${chapter === 5 ? "du-theme" : chapter === 6 ? "japan-theme" : ""}`}>
       <div className="ambient-orb orb-one" /><div className="ambient-orb orb-two" /><div className="ambient-orb orb-three" />
       <div className="grain" aria-hidden="true" />
       <div className="cursor-glow" aria-hidden="true" />
-      {tapSparkles.map((sparkle) => <span key={sparkle.id} className="tap-sparkle" style={{ left: sparkle.x, top: sparkle.y }}>✦</span>)}
       <div className="star-field" aria-hidden="true">
         {sparklePieces.map((piece) => <i key={piece} style={{ "--top": `${(piece * 37 + 9) % 100}%`, "--left": `${(piece * 61 + 5) % 100}%`, "--duration": `${2 + (piece % 5)}s`, "--delay": `${(piece % 11) * -0.7}s` } as CSSProperties} />)}
         <b className="firefly firefly-one" /><b className="firefly firefly-two" /><b className="firefly firefly-three" />
       </div>
       <Confetti burst={burst} />
-      <audio ref={audioRef} src="/music/birthday.mp3" loop preload="none" />
 
       <header className="topbar">
         <a className="wordmark" href="#top" onClick={(event) => event.preventDefault()}><span>✦</span> ANI, AT 20</a>
-        <div className="topbar-right"><span className="chapter-counter">{String(chapter + 1).padStart(2, "0")} <i>/</i> 14</span><button className={`music-button ${musicOn ? "playing" : ""}`} onClick={toggleMusic} aria-label={musicOn ? "Pause birthday music" : "Play birthday music"}><span>{musicOn ? "Ⅱ" : "♫"}</span><small>{musicOn ? "Pause" : "Music"}</small></button>{musicError && <span className="music-error" role="status">{musicError}</span>}</div>
+        <div className="topbar-right"><span className="chapter-counter">{String(chapter + 1).padStart(2, "0")} <i>/</i> {chapters.length}</span></div>
       </header>
 
-      <div className="progress-track" aria-label={`Chapter ${chapter + 1} of 14`}><i style={{ width: `${((chapter + 1) / chapters.length) * 100}%` }} /><span className="progress-star" style={{ left: `${((chapter + 1) / chapters.length) * 100}%` }}>✦</span></div>
+      <div className="progress-track" aria-label={`Chapter ${chapter + 1} of ${chapters.length}`}><i style={{ width: `${((chapter + 1) / chapters.length) * 100}%` }} /><span className="progress-star" style={{ left: `${((chapter + 1) / chapters.length) * 100}%` }}>✦</span></div>
 
       <AnimatePresence mode="wait" initial={false}>
       <motion.section
@@ -396,7 +382,8 @@ export default function BirthdayExperience() {
         exit={reduceMotion ? undefined : { opacity: 0, scale: 0.985, filter: "blur(8px)" }}
         transition={{ duration: reduceMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
       >
-        {chapter !== 0 && chapter !== 1 && chapter !== 13 && <PageHeading index={chapter} />}
+        {chapter !== 0 && chapter !== 1 && chapter !== 15 && <PageHeading index={chapter} />}
+        {chapter !== 1 && <AniPhoto chapter={`chapter-${chapter + 1}` as keyof typeof photoMap} />}
 
         {chapter === 0 && <>
           <div className="chapter-one-intro"><p className="eyebrow">{experienceCopy.opening.eyebrow}</p><h1>{experienceCopy.opening.title}<br /><em>{experienceCopy.opening.titleAccent}</em></h1></div>
@@ -408,6 +395,12 @@ export default function BirthdayExperience() {
             <p className="eyebrow reveal-eyebrow">{experienceCopy.birthday.eyebrow}</p>
             <h1 className="birthday-title"><span>{experienceCopy.birthday.greeting}</span><em>{experienceCopy.birthday.title}</em><strong>{experienceCopy.birthday.name}</strong></h1>
             <p className="bangla-title">{experienceCopy.birthday.bangla}</p>
+            <section className="urdu-wish-card glass-card" dir="rtl" lang="ur">
+              <AniPhoto chapter="chapter-2" />
+              <KaraokeWish />
+              <p className="urdu-wish-translation" dir="ltr" lang="en">{urduBirthdayTranslation}</p>
+              <NarrationControls id="urduWish" autoStart replayLabel="🔁 Hear my wish again" />
+            </section>
             <div className="birthday-cake" aria-hidden="true">🎂</div>
             <div className="balloons" aria-hidden="true"><i>♡</i><i>✦</i><i>♡</i><i>✧</i></div>
             <NextButton onClick={goNext}>{experienceCopy.birthday.next}</NextButton>
@@ -427,7 +420,7 @@ export default function BirthdayExperience() {
         </div>}
 
         {chapter === 3 && <div className="quality-grid">
-          {qualities.map((quality, index) => <button className={`quality-card ${flipped.includes(index) ? "flipped" : ""}`} key={quality.title} onClick={() => setFlipped((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} aria-label={`${flipped.includes(index) ? "Hide" : "Reveal"} ${quality.title}`}>
+          {qualities.map((quality, index) => <button className={`quality-card ${flipped.includes(index) ? "flipped" : ""}`} key={quality.title} data-sfx="flip" onClick={() => setFlipped((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])} aria-label={`${flipped.includes(index) ? "Hide" : "Reveal"} ${quality.title}`}>
             <span className="quality-front"><i>{quality.icon}</i><b>{quality.title}</b><small>tap to turn over ↗</small></span><span className="quality-back">{quality.detail}</span>
           </button>)}
           <p className="quality-note">{experienceCopy.qualities.note}</p>
@@ -467,21 +460,33 @@ export default function BirthdayExperience() {
           <NextButton onClick={goNext}>{experienceCopy.dream.next}</NextButton>
         </div>}
 
-        {chapter === 6 && <div className="gpa-scene">
+        {chapter === 6 && <div className="japan-scene">
+          <p className="japan-label">{experienceCopy.japan.label}</p>
+          <h2>{experienceCopy.japan.title}</h2>
+          <figure className="japan-photo-frame">
+            <Image src="/photos/japan-fuji.jpg" alt="Mount Fuji above Lake Kawaguchi, framed by cherry blossoms" fill sizes="(max-width: 720px) 88vw, 680px" priority />
+            <figcaption>{experienceCopy.japan.caption}</figcaption>
+          </figure>
+          <p className="japan-message">{experienceCopy.japan.message}</p>
+          <a className="japan-photo-credit" href="https://unsplash.com/photos/mount-fuji-overlooks-a-lake-with-blooming-cherry-blossoms-tDVUSTbITCI" target="_blank" rel="noreferrer">Photo by Fluke on Unsplash</a>
+          <NextButton onClick={goNext}>{experienceCopy.japan.next}</NextButton>
+        </div>}
+
+        {chapter === 7 && <div className="gpa-scene">
           <div className="gpa-rays" />
           <p className="gpa-intro">{experienceCopy.result.intro}</p>
           <div className={`gpa-number ${score >= 500 ? "gpa-complete" : ""}`}><span>GPA</span><strong>{(score / 100).toFixed(2)}</strong><i>✦</i></div>
           <p className="gpa-message">{experienceCopy.result.message}</p>
-          <button className="wish-star-button" onClick={() => setBurst((value) => value + 1)} aria-label={experienceCopy.result.starHint.replace("\n", " ")}>✦<small>{experienceCopy.result.starHint.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</small></button>
+          <button className="wish-star-button" data-sfx="sparkle" onClick={triggerConfetti} aria-label={experienceCopy.result.starHint.replace("\n", " ")}>✦<small>{experienceCopy.result.starHint.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</small></button>
           <NextButton onClick={goNext}>{experienceCopy.result.next}</NextButton>
         </div>}
 
-        {chapter === 7 && <div className="wishes-grid">
+        {chapter === 8 && <div className="wishes-grid">
           {presentWishes.map((wish, index) => <article className="wish-card" key={wish.text} style={{ "--card-delay": `${index * 0.08}s` } as CSSProperties}><span>{wish.icon}</span><p>{wish.text}</p></article>)}
           <NextButton onClick={goNext}>{experienceCopy.present.next}</NextButton>
         </div>}
 
-        {chapter === 8 && <div className="jar-scene">
+        {chapter === 9 && <div className="jar-scene">
           <p className="jar-intro">{experienceCopy.jar.intro}</p>
           <div className={`wish-jar ${wishCount >= 8 ? "jar-full" : ""}`}>
             <span className="jar-neck" /><div className="jar-mouth" />
@@ -489,12 +494,12 @@ export default function BirthdayExperience() {
             <div className="jar-label">{experienceCopy.jar.label.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</div>
           </div>
           <p className="jar-current">{jarWish || experienceCopy.jar.empty}</p>
-          <button className="jar-tap" onClick={() => { const next = Math.min(8, wishCount + 1); setWishCount(next); setJarWish(jarWishes[next - 1] ?? experienceCopy.jar.full); if (next === 8) setBurst((value) => value + 1); }} disabled={wishCount >= 8}>{wishCount < 8 ? `${experienceCopy.jar.add} · ${wishCount}/8` : experienceCopy.jar.full}</button>
+          <button className="jar-tap" data-sfx="sparkle" onClick={() => { const next = Math.min(8, wishCount + 1); setWishCount(next); setJarWish(jarWishes[next - 1] ?? experienceCopy.jar.full); if (next === 8) triggerConfetti(); }} disabled={wishCount >= 8}>{wishCount < 8 ? `${experienceCopy.jar.add} · ${wishCount}/8` : experienceCopy.jar.full}</button>
           {wishCount >= 8 && <p className="jar-overflow">{experienceCopy.jar.overflow}</p>}
           <NextButton onClick={goNext}>{experienceCopy.jar.next}</NextButton>
         </div>}
 
-        {chapter === 9 && <div className="timeline-wrap">
+        {chapter === 10 && <div className="timeline-wrap">
           <div className="timeline-line"><i /></div>
           {futureWishes.map((wish, index) => <article className={`timeline-item ${index % 2 ? "timeline-right" : "timeline-left"}`} key={wish.age}>
             <span className="timeline-dot">✦</span><div className="timeline-card"><small>{wish.age}</small><h3>{wish.title}</h3><p>{wish.detail}</p></div>
@@ -503,16 +508,16 @@ export default function BirthdayExperience() {
           <NextButton onClick={goNext}>{experienceCopy.future.next}</NextButton>
         </div>}
 
-        {chapter === 10 && <div className="scratch-grid">
+        {chapter === 11 && <div className="scratch-grid">
           {scratchCards.map((card, index) => <article className={`scratch-card ${scratched.includes(index) ? "revealed" : ""}`} key={card.label}>
             <div className="scratch-under"><small>{card.label}</small><p>{card.reveal}</p></div>
-            {!scratched.includes(index) && <canvas ref={(node) => { canvasRefs.current[index] = node; }} className="scratch-canvas" onPointerDown={(event) => { scratchDown.current = null; event.currentTarget.setPointerCapture(event.pointerId); drawScratch(event, index); }} onPointerMove={(event) => drawScratch(event, index)} onPointerUp={() => endScratch(index)} onPointerCancel={() => endScratch(index)} aria-label={`Scratch to reveal ${card.label}`} />}
+            {!scratched.includes(index) && <canvas ref={(node) => { canvasRefs.current[index] = node; }} className="scratch-canvas" data-sfx="scratch" onPointerDown={(event) => { scratchAudioRef.current = startScratch(); scratchDown.current = null; event.currentTarget.setPointerCapture(event.pointerId); drawScratch(event, index); }} onPointerMove={(event) => drawScratch(event, index)} onPointerUp={() => { stopScratch(scratchAudioRef.current); scratchAudioRef.current = null; endScratch(index); }} onPointerCancel={() => { stopScratch(scratchAudioRef.current); scratchAudioRef.current = null; endScratch(index); }} aria-label={`Scratch to reveal ${card.label}`} />}
           </article>)}
           <p className="scratch-hint">{experienceCopy.scratch.hint}</p>
           <NextButton onClick={goNext}>{experienceCopy.scratch.next}</NextButton>
         </div>}
 
-        {chapter === 11 && <div className="prayer-scene">
+        {chapter === 12 && <div className="prayer-scene">
           <div className="lantern-field" aria-hidden="true"><span>⌑</span><span>⌑</span><span>⌑</span><span>⌑</span><span>⌑</span></div>
           <div className="prayer-list">{prayers.map((prayer, index) => <p key={prayer} style={{ "--prayer-delay": `${index * 0.45}s` } as CSSProperties}><span>✦</span>{prayer}</p>)}</div>
           <p className="dua">{experienceCopy.prayer.dua}</p>
@@ -520,36 +525,49 @@ export default function BirthdayExperience() {
           <NextButton onClick={goNext}>{experienceCopy.prayer.next}</NextButton>
         </div>}
 
-        {chapter === 12 && <div className="letter-scene">
-          {!envelopeOpen ? <button className="envelope" onClick={() => setEnvelopeOpen(true)} aria-label={`Open ${recipient.sender}'s letter`}><span className="envelope-back" /><span className="envelope-paper" /><span className="envelope-flap" /><span className="wax-seal">S</span><small>FOR {recipient.firstName.toUpperCase()}, WITH LOVE</small></button> : <article className="letter-paper">
+        {chapter === 13 && <div className={`promise-scene ${promiseHearts ? "promise-accepted" : ""}`}>
+          <div className="promise-photo"><AniPhoto chapter="chapter-14" /></div>
+          <p className="promise-eyebrow">ONE LITTLE REQUEST</p>
+          <p className="promise-message"><TypedText text={experienceCopy.promise.message} speed={42} step={1} /></p>
+          <NarrationControls id="dontForgetMe" autoStart />
+          <button className="promise-button" data-sfx="heart" onClick={() => { setPromiseHearts(true); triggerConfetti(); }}>{experienceCopy.promise.button}</button>
+          {promiseHearts && <div className="promise-hearts" aria-hidden="true">{Array.from({ length: 14 }, (_, index) => <span key={index} style={{ "--heart-index": index, "--heart-left": `${(index * 71 + 12) % 100}%` } as CSSProperties}>♡</span>)}</div>}
+          <NextButton onClick={goNext}>{experienceCopy.letter.next}</NextButton>
+        </div>}
+
+        {chapter === 14 && <div className="letter-scene">
+          {!envelopeOpen ? <button className="envelope" data-sfx="reveal" onClick={() => { setLetterVoicePaused(false); setEnvelopeOpen(true); }} aria-label={`Open ${recipient.sender}'s letter`}><span className="envelope-back" /><span className="envelope-paper" /><span className="envelope-flap" /><span className="wax-seal">S</span><small>FOR {recipient.firstName.toUpperCase()}, WITH LOVE</small></button> : <article className="letter-paper">
+            <NarrationControls id={LETTER_VOICE_LANG === "ur" ? "letterUr" : "letterEn"} autoStart onPauseState={setLetterVoicePaused} onSkip={() => { setShowAllLetter(true); setTypedLength(letterText.length); setLetterVoicePaused(false); }} />
             <div className="letter-decor">✦ &nbsp; A LETTER FOR YOU &nbsp; ✦</div>
             <p className="letter-body">{(showAllLetter ? letterText : letterText.slice(0, typedLength)).split("\n").map((line, index) => <span className="letter-line" key={`${index}-${line}`}>{line || " "}<br /></span>)}{!showAllLetter && typedLength < letterText.length && <i className="typing-cursor">|</i>}</p>
-            {typedLength < letterText.length && <button className="show-letter" onClick={() => { setShowAllLetter(true); setTypedLength(letterText.length); }}>Read the whole letter →</button>}
+            {typedLength < letterText.length && <button className="show-letter" onClick={() => { setShowAllLetter(true); setTypedLength(letterText.length); }}>{experienceCopy.letter.showAll}</button>}
             {typedLength >= letterText.length && <p className="letter-signoff">With all my love,<br /><em>Shihab</em></p>}
           </article>}
           {!envelopeOpen && <p className="envelope-hint">{experienceCopy.letter.hint}</p>}
           {envelopeOpen && typedLength >= letterText.length && <NextButton onClick={goNext}>{experienceCopy.letter.next}</NextButton>}
         </div>}
 
-        {chapter === 13 && <div className="finale-scene">
+        {chapter === 15 && <div className="finale-scene">
           <div className="skyline" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /><i /></div>
           <div className="finale-fireworks" aria-hidden="true"><span>✳</span><span>✧</span><span>✳</span><span>✴</span><span>✳</span></div>
           <div className="finale-hearts" aria-hidden="true"><span>♡</span><span>♡</span><span>♡</span><span>♡</span></div>
           <div className="lantern-field finale-lanterns" aria-hidden="true"><span>⌑</span><span>⌑</span><span>⌑</span><span>⌑</span></div>
           <p className="eyebrow">{experienceCopy.finale.eyebrow}</p>
           <h1 className="finale-title">{experienceCopy.finale.titleLead}<br /><em>{recipient.fullName}</em></h1>
-          <button className="final-cake" onClick={() => { const next = cakeTaps + 1; setCakeTaps(next); if (next >= 5) setCakeSecret(secretMessages.cake); }} aria-label="Tap the cake five times">🎂</button>
+          <button className="final-cake" data-sfx="candle-blow" onClick={() => { const next = cakeTaps + 1; setCakeTaps(next); if (next >= 5) { setCakeSecret(secretMessages.cake); triggerConfetti(); play("firework"); } }} aria-label="Tap the cake five times">🎂</button>
           {cakeSecret && <p className="cake-secret">{cakeSecret}</p>}
           <p className="final-quote">{finalMessage}<br /><em>~ {recipient.sender.split(" ")[0]}</em></p>
+          <p className="dont-forget-closing">{experienceCopy.finale.closingLine}</p>
+          <NarrationControls id="urduWish" replayLabel="🔊 Hear my wish again" />
           <button className="daily-wish-button" onClick={() => setDailyWish(randomWishes[Math.floor(Math.random() * randomWishes.length)])}>{experienceCopy.finale.wishButton}</button>
           {dailyWish && <p className="daily-wish">“{dailyWish}”</p>}
-          <div className="final-actions"><button className="next-button" onClick={() => setBurst((value) => value + 1)}><span>{experienceCopy.finale.makeWish}</span><b>✦</b></button><button className="replay-button" onClick={replay}>{experienceCopy.finale.replay}</button></div>
+          <div className="final-actions"><button className="next-button" onClick={triggerConfetti}><span>{experienceCopy.finale.makeWish}</span><b>✦</b></button><button className="replay-button" onClick={replay}>{experienceCopy.finale.replay}</button></div>
           <p className="cake-hint">{experienceCopy.finale.cakeHint}</p>
         </div>}
       </motion.section>
       </AnimatePresence>
 
-      {chapter < 13 && chapter !== 0 && chapter !== 1 && chapter !== 12 && <nav className="chapter-dots" aria-label="Chapter navigation">{chapters.map((item, index) => <button key={item.number} className={index === chapter ? "active" : index < chapter ? "visited" : ""} onClick={() => { if (index === 6) setScore(0); setChapter(index); }} aria-label={`Go to chapter ${index + 1}`} title={item.title} />)}</nav>}
+      {chapter < chapters.length - 1 && chapter !== 0 && chapter !== 1 && chapter !== 14 && <nav className="chapter-dots" aria-label="Chapter navigation">{chapters.map((item, index) => <button key={item.number} className={index === chapter ? "active" : index < chapter ? "visited" : ""} onClick={() => { stopVoice(); if (index === 7) setScore(0); setChapter(index); }} aria-label={`Go to chapter ${index + 1}`} title={item.title} />)}</nav>}
       {lightbox !== null && <div className="lightbox" role="dialog" aria-modal="true" aria-label="Memory photo" onClick={() => setLightbox(null)}><button className="lightbox-close" onClick={() => setLightbox(null)} aria-label="Close photo">×</button><Image src={galleryImages[lightbox]} alt={photos[lightbox]?.caption ?? "A favorite memory"} sizes="90vw" priority /><p>{photos[lightbox]?.caption}</p><span>Tap anywhere to close</span></div>}
       <footer className="experience-footer"><span>{experienceCopy.footer.madeFor}</span><span>✦</span><span>{experienceCopy.footer.date}</span></footer>
     </main>

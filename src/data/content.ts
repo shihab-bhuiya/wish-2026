@@ -5,14 +5,16 @@ export const chapters = [
     { number: "04", title: "The rarest kind of human", eyebrow: "Six things I adore about you" },
     { number: "05", title: "A tiny conversation", eyebrow: "Just us being us" },
     { number: "06", title: "The dream with your name on it", eyebrow: "One day, Dhaka University" },
-    { number: "07", title: "For the result days", eyebrow: "I believe in you, always" },
-    { number: "08", title: "For right now", eyebrow: "Wishes for 20-year-old you" },
-    { number: "09", title: "A jar full of maybes", eyebrow: "Tap to collect a little magic" },
-    { number: "10", title: "The life you are building", eyebrow: "A future full of your own light" },
-    { number: "11", title: "Three tiny surprises", eyebrow: "Scratch a little, find a lot" },
-    { number: "12", title: "A quiet prayer for you", eyebrow: "May the kindest things find you" },
-    { number: "13", title: "A letter, from me to you", eyebrow: "Read this whenever you need it" },
-    { number: "14", title: "And this is only the beginning", eyebrow: "The world is lucky to have you" },
+    { number: "07", title: "Someday, Japan", eyebrow: "A dream worth looking forward to" },
+    { number: "08", title: "For the result days", eyebrow: "I believe in you, always" },
+    { number: "09", title: "For right now", eyebrow: "Wishes for 20-year-old you" },
+    { number: "10", title: "A jar full of maybes", eyebrow: "Tap to collect a little magic" },
+    { number: "11", title: "The life you are building", eyebrow: "A future full of your own light" },
+    { number: "12", title: "Three tiny surprises", eyebrow: "Scratch a little, find a lot" },
+    { number: "13", title: "A quiet wish for you", eyebrow: "May the kindest things find you" },
+    { number: "14", title: "One Little Request", eyebrow: "A small thing I hope you keep" },
+    { number: "15", title: "A letter, from me to you", eyebrow: "Read this whenever you need it" },
+    { number: "16", title: "And this is only the beginning", eyebrow: "The world is lucky to have you" },
 ] as const;
 
 export const recipient = {
@@ -31,6 +33,26 @@ export const photos = [
     { src: "whatsapp-7", caption: "A tiny reminder that you make life brighter.", date: "One for the keeps" },
     { src: "birthday-frame", caption: "More chapters, more laughs, more us.", date: "To everything ahead" },
 ] as const;
+
+export const photoMap = {
+    lock: "photo-01",
+    "chapter-1": "photo-01",
+    "chapter-2": "photo-02",
+    "chapter-3": "photo-03",
+    "chapter-4": "photo-04",
+    "chapter-5": "photo-05",
+    "chapter-6": "photo-06",
+    "chapter-7": "photo-08",
+    "chapter-8": "photo-07",
+    "chapter-9": "photo-08",
+    "chapter-10": "photo-01",
+    "chapter-11": "photo-02",
+    "chapter-12": "photo-03",
+    "chapter-13": "photo-04",
+    "chapter-14": "photo-05",
+    "chapter-15": "photo-06",
+    "chapter-16": "photo-07",
+} as const;
 
 export const qualities = [
     { icon: "✿", title: "Your kindness", detail: "You notice the little things people need, then somehow make them feel cared for without making a big deal of it." },
@@ -89,7 +111,7 @@ export const prayers = [
     "May your heart have more peace than it knows what to do with.",
 ] as const;
 
-export const letter = `My dearest ${recipient.fullName},\n\nHappy twentieth birthday, my favorite human. I wanted to give you something that felt a little like us: a bit silly, a bit sentimental, and made with a whole lot of care. I’m still an aspiring software engineer, so I built this—one line of code, one tiny detail, and one “she has to see this” thought at a time.\n\nBeing your best friend is one of the things I am quietly, constantly grateful for. Thank you for the honest conversations, the unexpected laughs, the comfort of being able to talk about absolutely anything, and for being exactly yourself with me. You make the world feel warmer just by being in it.\n\nI know your HSC result is so close now, and I know how much your Dhaka University dream means to you. Whatever the result says, please remember that it cannot measure your courage, your curiosity, or the brilliant person you are becoming. I believe in you with my whole heart. I am already proud of you—and I will be cheering the loudest for every next step, every new beginning, and every little win. May that GPA 5.00 find its way to you, and may DU soon feel like home.\n\nNo matter what this next year brings, you do not have to figure everything out alone. I am here for the excited voice notes, the overthinking, the celebrations, the “tell me everything” calls, and all the ordinary days in between. You can always come as you are.\n\nI hope being 20 brings you a little more freedom, a lot more laughter, kind people, answered prayers, and the kind of happiness that stays even after the candles are gone. Keep dreaming your big dreams, ${recipient.firstName}. The world has no idea what it is in for.\n\nশুভ জন্মদিন, আনি! আল্লাহ তোমার সব স্বপ্ন পূরণ করুন।\n\nAlways in your corner,\n${recipient.sender}`;
+export const letter = `My dearest ${recipient.fullName},\n\nHappy twentieth birthday, my favorite human. I wanted to give you something that felt a little like us: a bit silly, a bit sentimental, and made with a whole lot of care. I’m still an aspiring software engineer, so I built this—one line of code, one tiny detail, and one “she has to see this” thought at a time.\n\nBeing your best friend is one of the things I am quietly, constantly grateful for. Thank you for the honest conversations, the unexpected laughs, the comfort of being able to talk about absolutely anything, and for being exactly yourself with me. You make the world feel warmer just by being in it.\n\nI know your HSC result is so close now, and I know how much your Dhaka University dream means to you. Whatever the result says, please remember that it cannot measure your courage, your curiosity, or the brilliant person you are becoming. I believe in you with my whole heart. I am already proud of you—and I will be cheering the loudest for every next step, every new beginning, and every little win. May that GPA 5.00 find its way to you, and may DU soon feel like home.\n\nNo matter what this next year brings, you do not have to figure everything out alone. I am here for the excited voice notes, the overthinking, the celebrations, the “tell me everything” calls, and all the ordinary days in between. You can always come as you are.\n\nI hope being 20 brings you a little more freedom, a lot more laughter, kind people, answered prayers, and the kind of happiness that stays even after the candles are gone. Keep dreaming your big dreams, ${recipient.firstName}. The world has no idea what it is in for.\n\nMay God be with you and make every dream of yours come true.\n\nDon't forget me. I will always be cheering for you.\n\nAlways in your corner,\n${recipient.sender}`;
 
 export const randomWishes = [
     "May the right doors open for you at just the right time.",
@@ -107,6 +129,9 @@ export const secretMessages = {
 } as const;
 
 export const finalMessage = "Made with code, by someone who believes in you.";
+
+export const urduBirthdayWish = "سالگرہ مبارک ہو، آنی! تمہاری زندگی خوشیوں، کامیابیوں اور خوبصورت لمحوں سے بھری رہے۔ تمہارا ہر خواب پورا ہو، ڈھاکہ یونیورسٹی بھی اور جاپان بھی۔ ہمیشہ مسکراتی رہو۔";
+export const urduBirthdayTranslation = "Happy birthday, Ani! May your life be filled with happiness, success, and beautiful moments. May every dream of yours come true, Dhaka University and Japan too. Keep smiling always.";
 
 export const experienceCopy = {
     loading: "Preparing something special for Ani…",
@@ -149,6 +174,13 @@ export const experienceCopy = {
         footnote: "your dream is closer than it feels",
         next: "Keep believing",
     },
+    japan: {
+        label: "A DREAM ON THE HORIZON",
+        title: "One day, Japan.",
+        message: "May you get to see every place you dream about, from the quiet beauty of Mount Fuji to the bright streets of Tokyo.",
+        caption: "A little glimpse of the place you dream of seeing.",
+        next: "And there is more",
+    },
     result: {
         intro: "A wish from my whole heart",
         message: "I believe in you. Your result will make everyone proud, and I will be the loudest one cheering.",
@@ -171,9 +203,13 @@ export const experienceCopy = {
     },
     scratch: { hint: "Use your finger to scratch each card ✦", next: "Keep this close" },
     prayer: {
-        dua: "আল্লাহ তোমার সব স্বপ্ন পূরণ করুন।",
-        translation: "May every beautiful thing you pray for find its way to you.",
+        dua: "May God be with you and make every dream of yours come true.",
+        translation: "May every beautiful hope find its way to you.",
         next: "A letter from me",
+    },
+    promise: {
+        message: "Wherever life takes you—to Dhaka University, to Japan, to every dream—please don't forget me. I will always be cheering for you.",
+        button: "I promise 🤝",
     },
     letter: {
         hint: "Tap the seal to open your letter",
@@ -187,6 +223,7 @@ export const experienceCopy = {
         makeWish: "Make a Wish",
         replay: "↺   Replay from the beginning",
         cakeHint: "Psst… tap the cake five times.",
+        closingLine: "Don't forget me. ~ Shihab",
     },
     footer: { madeFor: "MADE FOR ANI", date: "21 · 10 · ALWAYS" },
 } as const;

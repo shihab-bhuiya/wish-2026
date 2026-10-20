@@ -1,0 +1,18 @@
+export const musicTracks = {
+    "chapter-1": "/music/birthday.mp3",
+    "chapter-2": "/music/birthday.mp3",
+    "chapter-3": "/music/birthday.mp3",
+    "chapter-4": "/music/birthday.mp3",
+    "chapter-5": "/music/birthday.mp3",
+    "chapter-6": "/music/dream.mp3",
+    "chapter-7": "/music/dream.mp3",
+    "chapter-8": "/music/dream.mp3",
+    "chapter-9": "/music/birthday.mp3",
+    "chapter-10": "/music/birthday.mp3",
+    "chapter-11": "/music/dream.mp3",
+    "chapter-12": "/music/soft-wishes.mp3",
+    "chapter-13": "/music/soft-wishes.mp3",
+    "chapter-14": "/music/soft-wishes.mp3",
+    "chapter-15": "/music/letter.mp3",
+    "chapter-16": "/music/happy-birthday.mp3",
+} as const;
