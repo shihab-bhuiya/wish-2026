@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { sfxMap, type SfxEvent } from "@/data/sfx";
 import { useAudio } from "@/lib/audio-context";
 
@@ -18,6 +18,11 @@ export function preloadSfx() {
 
 export function useSfx() {
     const { started, muted, sfxEnabled, ducked, duckMusic } = useAudio();
+    const duckedRef = useRef(ducked);
+
+    useEffect(() => {
+        duckedRef.current = ducked;
+    }, [ducked]);
 
     useEffect(() => {
         if (!muted && sfxEnabled) return;
@@ -34,14 +39,14 @@ export function useSfx() {
         const sound = sfxMap[event];
         const audio = event === "scratch" ? new Audio(sound.file) : (preloadFiles.get(event)?.cloneNode(true) as HTMLAudioElement | undefined) ?? new Audio(sound.file);
         audio.preload = "auto";
-        audio.volume = Math.max(0, Math.min(1, sound.volume * (ducked ? 0.25 : 1) * (0.95 + Math.random() * 0.1)));
+        audio.volume = Math.max(0, Math.min(1, sound.volume * (duckedRef.current ? 0.25 : 1) * (0.95 + Math.random() * 0.1)));
         audio.playbackRate = 0.95 + Math.random() * 0.1;
         activeSounds.add(audio);
         if (sound.duckMs) duckMusic(sound.duckMs);
         void audio.play().catch(() => { activeSounds.delete(audio); });
         audio.addEventListener("ended", () => { activeSounds.delete(audio); audio.remove(); }, { once: true });
         audio.addEventListener("error", () => { activeSounds.delete(audio); audio.remove(); }, { once: true });
-    }, [duckMusic, ducked, muted, sfxEnabled, started]);
+    }, [duckMusic, muted, sfxEnabled, started]);
 
     const startScratch = useCallback(() => {
         if (!started || muted || !sfxEnabled || typeof window === "undefined") return null;
