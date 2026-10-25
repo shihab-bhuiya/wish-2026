@@ -1,6 +1,6 @@
 This is Ani's birthday surprise built with Next.js.
 
-## Getting Started
+## Getting Started 
 
 First, run the development server:
 
