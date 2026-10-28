@@ -1,4 +1,4 @@
-This is Ani's birthday surprise built with Next.js.
+This is Ani's birthday surprise built with Next.js
 
 ## Getting the Started  
 
